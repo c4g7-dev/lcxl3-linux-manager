@@ -212,15 +212,19 @@ class MainWindow(QMainWindow):
             self._update_connection_ui(True)
             self._midi.setup_encoder_names()
             self._midi.push_all(self._state)
-            # Replay saved CC positions to VirMIDI so downstream apps
-            # receive the last-known values immediately on connect.
-            self._midi.push_cc_state(self._state)
             # Restore idle display text if set
             txt = self._controller.display_text
             if txt:
                 self._midi.set_stationary_display(txt)
+            # Delay CC replay — PipeWire needs time to route the VirMIDI port
+            QTimer.singleShot(1500, self._push_saved_cc)
         else:
             self._update_connection_ui(False)
+
+    def _push_saved_cc(self) -> None:
+        """Replay saved CC positions to VirMIDI after PipeWire routing settles."""
+        if self._midi.connected:
+            self._midi.push_cc_state(self._state)
 
     def _update_connection_ui(self, connected: bool) -> None:
         if connected:

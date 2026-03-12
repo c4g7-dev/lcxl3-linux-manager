@@ -4,6 +4,8 @@
 
 Novation ships Components for macOS/Windows — but nothing for Linux. This app fills that gap: full RGB LED control, OLED display text, MIDI forwarding with safe CC remapping, persistent fader/knob state, profiles, and a dark native GUI. Runs on any distro with ALSA and PipeWire (or JACK).
 
+![LCXL3 Linux Manager](images/app-main.png)
+
 ## Features
 
 - **Full RGB LED control** — 16.7M colors on all 48 LEDs (24 knobs, 16 buttons, 8 side buttons) via MK3 DAW-mode SysEx
