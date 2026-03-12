@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+.venv-*/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Runtime / debug
+nohup.out
+*.log
+
+# Scene data (user-specific)
+# ~/.config/launch-control-xl/ is outside the repo

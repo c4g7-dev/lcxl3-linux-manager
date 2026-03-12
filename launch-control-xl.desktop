@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Launch Control XL LED Manager
+Comment=Control LEDs on the Novation Launch Control XL
+Exec=python -m launch_control_xl.main
+Path=/home/c4g7/launch-midi-setup
+Type=Application
+Terminal=false
+Categories=Audio;MIDI;Music;
+Keywords=MIDI;Launch Control;Novation;LED;
