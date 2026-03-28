@@ -314,16 +314,26 @@ class ControllerState:
         for k in self._toggled:
             self._toggled[k] = False
 
+    def all_toggle_states(self) -> list[tuple[str, bool]]:
+        """Return list of (key, is_on) for TOGGLE-mode buttons."""
+        return [(k, self._toggled.get(k, False))
+                for k, cfg in self._configs.items()
+                if cfg.mode == LEDMode.TOGGLE]
+
     # -- serialisation (used by presets.py) ---------------------------------
     def to_dict(self) -> dict:
         # Only save CC values that have been received (not None)
         cc_data = {str(cc): val for cc, val in self._cc_values.items()
                    if val is not None}
+        # Only save toggle state for TOGGLE-mode buttons that are ON
+        toggle_data = {k: True for k, cfg in self._configs.items()
+                       if cfg.mode == LEDMode.TOGGLE and self._toggled.get(k)}
         return {
             "leds": {k: cfg.to_dict() for k, cfg in self._configs.items()},
             "display_text": self.display_text,
             "brightness": self.brightness,
             "cc_values": cc_data,
+            "toggles": toggle_data,
         }
 
     def load_dict(self, data: dict) -> None:
@@ -337,10 +347,11 @@ class ControllerState:
             led_data = data
             self.display_text = ""
             self.brightness = 127
+        toggle_data = data.get("toggles", {})
         for k, d in led_data.items():
             if k in self._configs:
                 self._configs[k] = LEDConfig.from_dict(d)
-                self._toggled[k] = False
+                self._toggled[k] = toggle_data.get(k, False)
         # Restore saved CC values (leave missing ones as None)
         cc_data = data.get("cc_values", {})
         for cc_str, val in cc_data.items():

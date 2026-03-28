@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Launch Control XL LED Manager — entry point."""
 
+import signal
 import sys
 import fcntl
 from pathlib import Path
 
+from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication, QMessageBox
 from PyQt6.QtGui import QIcon
 
@@ -77,12 +79,25 @@ def main() -> None:
         dlg.exec()
         sys.exit(0)
 
+    # Ensure clean shutdown (LEDs off) on SIGTERM / SIGHUP (e.g. system poweroff)
+    for sig in (signal.SIGTERM, signal.SIGHUP):
+        signal.signal(sig, lambda *_: app.quit())
+
+    # Periodic no-op timer lets Python process pending signal handlers
+    # while Qt's C++ event loop is running
+    _sig_timer = QTimer()
+    _sig_timer.timeout.connect(lambda: None)
+    _sig_timer.start(200)
+
     minimized = "--minimized" in sys.argv or "--tray" in sys.argv
 
     window = MainWindow()
     window.resize(900, 500)
     if not minimized:
         window.show()
+
+    # Guarantee _shutdown() runs on quit even when minimised to tray
+    app.aboutToQuit.connect(window._shutdown)
 
     sys.exit(app.exec())
 

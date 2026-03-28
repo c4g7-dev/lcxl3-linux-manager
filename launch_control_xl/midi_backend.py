@@ -292,6 +292,33 @@ class MidiBackend:
                 except (IOError, OSError):
                     return
 
+    def push_toggle_state(self, state: ControllerState) -> None:
+        """Replay saved toggle button states to VirMIDI.
+
+        Sends CC 127 (on) or CC 0 (off) for each TOGGLE-mode button so
+        downstream apps see the persisted button positions on startup.
+        """
+        if not self._virtual_out or self._virtual_out.closed:
+            return
+        for key, is_on in state.all_toggle_states():
+            # Derive hw_id (CC number) from the key, e.g. "button_37" → 37
+            parts = key.rsplit("_", 1)
+            if len(parts) != 2 or not parts[1].isdigit():
+                continue
+            cc = int(parts[1])
+            if cc not in _BUTTON_REMAP:
+                continue
+            fwd = self._remap_for_forward(
+                mido.Message("control_change",
+                             channel=_BTN_INPUT_CHANNEL,
+                             control=cc,
+                             value=127 if is_on else 0))
+            if fwd is not None:
+                try:
+                    self._virtual_out.write(fwd.bin())
+                except (IOError, OSError):
+                    return
+
     def reset_leds(self) -> None:
         """Turn all LEDs off."""
         for elem in ALL_LED_ELEMENTS:

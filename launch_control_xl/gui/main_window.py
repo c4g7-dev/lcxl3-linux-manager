@@ -188,6 +188,9 @@ class MainWindow(QMainWindow):
         QApplication.quit()
 
     def _shutdown(self) -> None:
+        if getattr(self, '_shutting_down', False):
+            return
+        self._shutting_down = True
         self._reconnect_timer.stop()
         self._refresh_timer.stop()
         self._cc_save_timer.stop()
@@ -222,9 +225,10 @@ class MainWindow(QMainWindow):
             self._update_connection_ui(False)
 
     def _push_saved_cc(self) -> None:
-        """Replay saved CC positions to VirMIDI after PipeWire routing settles."""
+        """Replay saved CC and toggle positions to VirMIDI after PipeWire routing settles."""
         if self._midi.connected:
             self._midi.push_cc_state(self._state)
+            self._midi.push_toggle_state(self._state)
 
     def _update_connection_ui(self, connected: bool) -> None:
         if connected:
@@ -274,6 +278,8 @@ class MainWindow(QMainWindow):
             return
         color = self._state.on_press(elem)
         self._midi.set_led(elem, color)
+        # Debounced save so toggle positions persist across restarts
+        self._cc_save_timer.start()
 
     @pyqtSlot(int, str)
     def _do_hw_release(self, hw_id: int, kind_val: str) -> None:
@@ -322,7 +328,6 @@ class MainWindow(QMainWindow):
         self._controller.refresh()
 
     def _on_scene_loaded(self, name: str) -> None:
-        self._state.reset_toggles()
         self._midi.push_all(self._state)
         self._controller.refresh()
         self._color_editor.set_elements(self._controller.selected_elements)

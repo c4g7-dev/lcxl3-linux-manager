@@ -17,6 +17,8 @@ Novation ships Components for macOS/Windows — but nothing for Linux. This app 
 - **Scene profiles** — save / load / rename / copy / delete named LED + display + brightness layouts
 - **MIDI forwarding** — remaps DAW-mode CCs to safe numbers (avoids CC7/10/11 conflicts) and forwards through a persistent VirMIDI port
 - **Persistent CC state** — fader/knob positions are saved per-profile and replayed to downstream apps on startup — no need to touch every control after reboot
+- **Persistent toggle state** — toggle button on/off positions are saved per-profile and restored on startup (both LED state and MIDI output)
+- **LED shutdown service** — systemd service turns all LEDs off on system shutdown/reboot (no stale lit LEDs after poweroff)
 - **Auto-reconnect** — detects when the controller is plugged in or unplugged
 - **System tray** — minimize to tray, quick scene switching, `--minimized` flag for headless autostart
 - **Single instance** — prevents duplicate app launches
@@ -63,6 +65,25 @@ python -m launch_control_xl.main
 python -m launch_control_xl.main --minimized
 ```
 
+### LED shutdown service (recommended)
+
+Install a systemd service that turns off all LEDs when the system shuts down or reboots.
+This uses `amidi` (part of `alsa-utils`) — no Python needed at shutdown time:
+
+```bash
+# Install (one-time, requires root)
+sudo ./scripts/install-shutdown-service.sh
+
+# Test it manually
+sudo systemctl start lcxl3-leds-off.service
+
+# Uninstall
+sudo systemctl disable --now lcxl3-leds-off.service
+sudo rm /etc/systemd/system/lcxl3-leds-off.service
+sudo rm -rf /opt/lcxl3-linux-manager/scripts/
+sudo systemctl daemon-reload
+```
+
 ### Hyprland / Sway autostart
 
 ```ini
@@ -104,6 +125,11 @@ launch_control_xl/
     ├── controller_widget.py # Visual LCXL3 layout with interactive LEDs
     ├── color_editor.py      # Color picker, mode selector, gradient tool
     └── scene_panel.py       # Profile list management
+
+scripts/
+├── lcxl3-leds-off.sh        # Standalone LED-off script (bash + amidi)
+├── lcxl3-leds-off.service   # systemd unit for shutdown LED-off
+└── install-shutdown-service.sh  # One-command installer
 ```
 
 ## Troubleshooting

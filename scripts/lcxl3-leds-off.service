@@ -1,0 +1,13 @@
+[Unit]
+Description=Turn off LCXL MK3 LEDs on shutdown
+DefaultDependencies=no
+Before=shutdown.target reboot.target halt.target
+After=sound.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/lcxl3-linux-manager/scripts/lcxl3-leds-off.sh
+TimeoutStartSec=10
+
+[Install]
+WantedBy=halt.target reboot.target shutdown.target
