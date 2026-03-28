@@ -197,7 +197,9 @@ class MainWindow(QMainWindow):
         # Flush any pending CC save before exit
         self._auto_save_cc()
         self._midi.reset_leds()
-        self._midi.disconnect()
+        # Stay in DAW mode so LEDs remain off after port close.
+        # Normal user-initiated disconnect still exits DAW mode properly.
+        self._midi.disconnect(exit_daw=False)
 
     # -- MIDI connection ----------------------------------------------------
 

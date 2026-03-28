@@ -208,9 +208,9 @@ class MidiBackend:
             self.on_connect()
         return True
 
-    def disconnect(self) -> None:
+    def disconnect(self, exit_daw: bool = True) -> None:
         self._stop_listener()
-        if self._daw_mode and self._outport and not self._outport.closed:
+        if exit_daw and self._daw_mode and self._outport and not self._outport.closed:
             self._exit_daw_mode()
         for port in (self._outport, self._inport):
             if port and not port.closed:

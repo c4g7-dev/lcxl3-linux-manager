@@ -5,9 +5,11 @@
 # Called by the lcxl3-leds-off.service systemd unit on shutdown.
 #
 # Strategy:
-#   1. Kill the LCXL3 manager app (SIGTERM) — its shutdown handler turns
-#      LEDs off and releases the MIDI port.
-#   2. Fall back to amidi if the app wasn't running or the port is still lit.
+#   1. Kill the LCXL3 manager app (SIGTERM) so it releases the MIDI port.
+#      The app stays in DAW mode on shutdown (no exit_daw), so closing
+#      the port alone doesn't revert to factory colours.
+#   2. Use amidi to enter DAW mode (in case it was lost), send all-LEDs-off,
+#      then exit DAW mode so the controller is fully dark.
 #
 # SysEx format per LED:
 #   F0 00 20 29 02 15 01 53 <idx> 00 00 00 F7
@@ -15,16 +17,18 @@
 
 set -uo pipefail
 
-# Step 1: Ask the app to quit gracefully (its _shutdown() resets LEDs)
+# Step 1: Ask the app to quit gracefully and release the port
 APP_PID=$(pgrep -f 'launch_control_xl\.main' || true)
 if [[ -n "$APP_PID" ]]; then
     echo "Stopping LCXL3 manager (PID $APP_PID) ..."
     kill -TERM $APP_PID 2>/dev/null || true
-    # Wait up to 3s for the app to release the port
+    # Wait up to 3s for the app to exit and release the port
     for i in $(seq 1 30); do
         kill -0 $APP_PID 2>/dev/null || break
         sleep 0.1
     done
+    # Brief extra settle time for ALSA to release the port
+    sleep 0.3
 fi
 
 # Step 2: Auto-detect the LCXL3 DAW MIDI port
@@ -37,11 +41,20 @@ fi
 
 echo "Turning off LEDs on $PORT ..."
 
-# Enter DAW mode: Note On ch16 (0x9F) note 12 (0x0C) velocity 127 (0x7F)
-amidi -p "$PORT" -S '9F 0C 7F' 2>/dev/null || {
-    echo "Port busy or unavailable — app likely already handled LED shutdown." >&2
+# Enter DAW mode (retry up to 2s if port is still being released)
+DAW_OK=false
+for i in $(seq 1 20); do
+    if amidi -p "$PORT" -S '9F 0C 7F' 2>/dev/null; then
+        DAW_OK=true
+        break
+    fi
+    sleep 0.1
+done
+
+if [[ "$DAW_OK" != "true" ]]; then
+    echo "Cannot open port after retries — controller may be unavailable." >&2
     exit 0
-}
+fi
 sleep 0.05
 
 # All 48 LED indices (knobs 13-36, buttons 37-52, side 65,66,102,103,106,107,116,118)
@@ -58,5 +71,8 @@ for idx in "${LED_IDS[@]}"; do
     hex=$(printf '%02X' "$idx")
     amidi -p "$PORT" -S "F0 00 20 29 02 15 01 53 ${hex} 00 00 00 F7"
 done
+
+# Exit DAW mode so controller is fully dark (not showing DAW-mode defaults)
+amidi -p "$PORT" -S '9F 0C 00' 2>/dev/null || true
 
 echo "All LEDs off."
